@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>WebRTC Voice Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #38bdf8;
+        }
+
+        button {
+            padding: 10px 16px;
+            margin: 6px 0;
+            border: none;
+            border-radius: 6px;
+            background: #38bdf8;
+            color: #020617;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        textarea {
+            width: 100%;
+            height: 140px;
+            margin-top: 8px;
+            background: #020617;
+            color: #e5e7eb;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 10px;
+            resize: vertical;
+        }
+
+        .box {
+            margin-top: 20px;
+            padding: 16px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+        }
+
+        audio {
+            margin-top: 10px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<h1>WebRTC Chat de Voz (Teste)</h1>
+
+<button id="start">🎙️ Iniciar Microfone</button>
+
+<div class="box">
+    <h3>1️⃣ Criar Offer</h3>
+    <button id="createOffer">Criar Offer</button>
+    <textarea id="offer"></textarea>
+</div>
+
+<div class="box">
+    <h3>2️⃣ Colar Offer e Criar Answer</h3>
+    <button id="createAnswer">Criar Answer</button>
+    <textarea id="answer"></textarea>
+</div>
+
+<div class="box">
+    <h3>3️⃣ Colar Answer</h3>
+    <button id="setAnswer">Conectar</button>
+</div>
+
+<audio id="remoteAudio" autoplay></audio>
+
+<script>
+    let localStream;
+    let peer;
+
+    const startBtn = document.getElementById("start");
+    const offerTxt = document.getElementById("offer");
+    const answerTxt = document.getElementById("answer");
+    const remoteAudio = document.getElementById("remoteAudio");
+
+    startBtn.onclick = async () => {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        peer = new RTCPeerConnection();
+
+        localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
+
+        peer.ontrack = event => {
+            remoteAudio.srcObject = event.streams[0];
+        };
+
+        peer.onicecandidate = e => {
+            if (!e.candidate) {
+                offerTxt.value = JSON.stringify(peer.localDescription);
+            }
+        };
+
+        alert("Microfone iniciado");
+    };
+
+    document.getElementById("createOffer").onclick = async () => {
+        const offer = await peer.createOffer();
+        await peer.setLocalDescription(offer);
+    };
+
+    document.getElementById("createAnswer").onclick = async () => {
+        const offer = JSON.parse(offerTxt.value);
+
+        peer = new RTCPeerConnection();
+
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
+
+        peer.ontrack = event => {
+            remoteAudio.srcObject = event.streams[0];
+        };
+
+        peer.onicecandidate = e => {
+            if (!e.candidate) {
+                answerTxt.value = JSON.stringify(peer.localDescription);
+            }
+        };
+
+        await peer.setRemoteDescription(offer);
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+    };
+
+    document.getElementById("setAnswer").onclick = async () => {
+        const answer = JSON.parse(answerTxt.value);
+        await peer.setRemoteDescription(answer);
+        alert("Conectado 🎧");
+    };
+</script>
+
+</body>
+</html>
